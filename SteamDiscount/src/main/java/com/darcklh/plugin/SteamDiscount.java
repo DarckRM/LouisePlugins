@@ -15,6 +15,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -58,8 +59,9 @@ public class SteamDiscount implements PluginService {
         String update_date = queryInfo.select("span").get(1).text();
         Elements gameList = tables.child(1).select(".bg-none");
         OutMessage out = new OutMessage(inMessage);
-        // Node node = new Node("Steam " + title + "   " +update_date, Long.parseLong(LouiseConfig.BOT_ACCOUNT));
-        out.setMessage("Steam " + title + "   " +update_date);
+        ArrayList<Node> nodeArrayList = new ArrayList<>();
+        Node node = new Node("Steam " + title + "   " +update_date, Long.parseLong(LouiseConfig.BOT_ACCOUNT));
+        nodeArrayList.add(node);
         int number = 0;
         for ( Element game : gameList ) {
             if ( number > 9)
@@ -69,7 +71,7 @@ public class SteamDiscount implements PluginService {
 
             Element score_table = game.select("table").get(1);
 //            String steam_icon = score_table.select("img").get(2).attr("src");
-            String steam_icon = "https://www.yxdzqb.com/Others/Steam_icon_small.png";
+//            String steam_icon = "https://www.yxdzqb.com/Others/Steam_icon_small.png";
             String steam_score = score_table.select("b").get(1).text();
             String game_thumbnail = score_table.select(".img_in_tab").attr("src");
 
@@ -81,16 +83,16 @@ public class SteamDiscount implements PluginService {
             String message = "[CQ:image,file=" + game_thumbnail + "]" +
                     "\n游戏名称(EN): " + game_name_en +
                     "\n游戏名称(CN): " + game_name_ch +
-                    "\n[CQ:image,file=" + steam_icon + "]Steam评分: " + steam_score +
+                    "\nSteam评分: " + steam_score +
                     "\n折扣: " + discount +
                     "\n现价: " + price +
                     "\n" + is_lowest +
                     "\n<------------- ^w^ ------------->";
-//            Node infoNode = new Node("测试消息", Long.parseLong(LouiseConfig.BOT_ACCOUNT));
-            out.setMessage(out.getMessage() + message);
-
+            Node infoNode = new Node(message, Long.parseLong(LouiseConfig.BOT_ACCOUNT));
+            nodeArrayList.add(infoNode);
             number++;
         }
+        out.setMessages(nodeArrayList);
         r.sendMessage(out);
         return null;
     }
