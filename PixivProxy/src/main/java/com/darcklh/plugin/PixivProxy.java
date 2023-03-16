@@ -13,11 +13,11 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
-import java.net.SocketAddress;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -42,10 +42,7 @@ public class PixivProxy implements PluginService {
      * 最大连接时间
      */
     public final static int CONNECTION_TIMEOUT = 15;
-    /**
-     * JSON格式
-     */
-    public static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
+
     /**
      * OkHTTP线程池最大空闲线程数
      */
@@ -61,6 +58,8 @@ public class PixivProxy implements PluginService {
      */
     private static OkHttpClient HTTP_CLIENT = null;
 
+    R r = new R();
+
     public static void main (String[] args) {
         LouiseConfig.BOT_ACCOUNT = "1655944518";
         LouiseConfig.BOT_BASE_URL = "http://127.0.0.1:5700/";
@@ -70,7 +69,7 @@ public class PixivProxy implements PluginService {
         sender.setUser_id((long) 412543224);
         in.setUser_id((long) 412543224);
         in.setMessage_type("private");
-        in.setMessage("!pid !pid 81084671 3");
+        in.setMessage("!pid 104032208");
 
         pp.service(in);
     }
@@ -87,36 +86,41 @@ public class PixivProxy implements PluginService {
         initConfig();
 
         // 处理参数
-        String[] params = parseParams(inMessage.getMessage());
-        String pid = params[1];
         OutMessage out = new OutMessage(inMessage);
-        R r = new R();
+        String[] params = parseParams(inMessage.getMessage(), out);
+        String pid = params[1];
 
         // RequestBody body = RequestBody.create(MEDIA_TYPE_JSON, "");
         Request.Builder builder = new Request.Builder();
         Request request = builder.url(pixiv_url + pid).get().build();
 
         // 请求 pixiv 获取 pid 对应作品的 json 信息
-        JSONObject body = new JSONObject();
+        JSONObject body;
         try {
             log.info("开始请求 pixiv 获取作品 " + pid + " 对应信息");
             Response response = HTTP_CLIENT.newCall(request).execute();
             JSONObject result = JSONObject.parseObject(response.body().string());
 
-            if (result.getBoolean("error"))
-             throw new ReplyException("请求 pixiv 时遇到了未知的问题\n" + result.getString("message"));
+            if (result.getBoolean("error")) {
+                out.setMessage("请求 pixiv 时遇到了未知的问题\n" + result.getString("message"));
+                r.sendMessage(out);
+                return null;
+            }
             body = result.getJSONObject("body");
         } catch (Exception e) {
             log.warn("请求 pixiv 遇到异常: " + e.getMessage());
-            if ( e instanceof ReplyException)
-                throw (ReplyException) e;
-            throw new ReplyException("请求 pixiv 时遇到了未知的问题");
+            out.setMessage("请求 pixiv 时遇到了未知的问题");
+            r.sendMessage(out);
+            return null;
         }
         Integer pageCount = body.getInteger("pageCount");
         String illustTitle = body.getString("illustTitle");
         String alt = body.getString("alt");
-        // String artWorkUrl = body.getString("");
-        String urls = body.getJSONObject("urls").getString("original");
+        // 从作品子列表中获取完整信息
+        JSONObject subInfo = body.getJSONObject("userIllusts").getJSONObject(pid);
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd/HH/mm/ss");
+        String formattedDate = sdf.format(subInfo.getDate("updateDate"));
+        String urls = reverse_proxy_url + "img-original/img/" + formattedDate + "/" + pid + "_p0.jpg";
         String small = body.getJSONObject("urls").getString("small");
         // 如果不指定页数参数则默认处理，若指定页数则修改 url
         if ( params.length == 3) {
@@ -124,8 +128,8 @@ public class PixivProxy implements PluginService {
             urls = urls.replaceAll("\\_p\\d", "_p" + page);
         }
 
-        String r_proxy_url = reverse_proxy_url + urls.substring(20);
-        String small_r_proxy_url = reverse_proxy_url + small.substring(20);
+        String r_proxy_url = urls;
+        String small_r_proxy_url = urls.replaceAll(".jpg", "_master1200.jpg").replaceAll("img-original", "img-master");
 
         String basicMsg = "[CQ:at,qq=" + out.getUser_id() + "] 这是你的请求结果" +
                 "\n作品名: " + illustTitle +
@@ -152,14 +156,18 @@ public class PixivProxy implements PluginService {
         return null;
     }
 
-    private String[] parseParams(String message) {
+    private String[] parseParams(String message, OutMessage out) {
 
         // 去除特殊字符
         message = message.replaceAll("\u200B", "");
         // 按空格区分参数
         String[] params = message.split(" ");
-        if (params.length < 2)
-            throw new ReplyException("pid 功能需要指定 pid 哦");
+        if (params.length < 2) {
+            out.setMessage("pid 功能需要指定 pid 哦");
+            r.sendMessage(out);
+            throw new InnerException("PLG-PixivProxy", "缺少参数 PID", "");
+        }
+
 
         // 校验 PID 以及页数参数
         String page = "0";
@@ -172,9 +180,11 @@ public class PixivProxy implements PluginService {
         Matcher isNum = pattern.matcher(pid);
         Matcher isPageNum = pattern.matcher(page);
 
-        if (!isNum.matches() || !isPageNum.matches())
-            throw new ReplyException("pid 和页数必须要全数字哦");
-
+        if (!isNum.matches() || !isPageNum.matches()) {
+            out.setMessage("pid 和页数必须要全数字哦");
+            r.sendMessage(out);
+            throw new InnerException("PLG-PixivProxy", "参数格式不正确", "");
+        }
         return params;
     }
 
