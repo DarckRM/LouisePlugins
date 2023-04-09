@@ -12,7 +12,7 @@ public class PaintTask {
     OutMessage outMessage;
     InMessage inMessage;
     String prompt;
-    String uc;
+    String negativePrompt;
     String image;
     Integer width;
     Integer height;
@@ -30,7 +30,7 @@ public class PaintTask {
     @Override
     public String toString() {
         String result = "{\"prompt\":\"" + prompt + "\"" +
-                ", \"uc\":\"" + uc + "\"" +
+                ", \"uc\":\"" + negativePrompt + "\"" +
                 ", \"width\":" + width +
                 ", \"height\":" + height +
                 ", \"steps\":" + steps +
@@ -105,12 +105,12 @@ public class PaintTask {
         this.prompt = prompt;
     }
 
-    public String getUc() {
-        return uc;
+    public String getNegativePrompt() {
+        return negativePrompt;
     }
 
-    public void setUc(String uc) {
-        this.uc = uc;
+    public void setNegativePrompt(String negativePrompt) {
+        this.negativePrompt = negativePrompt;
     }
 
     public String getImage() {

@@ -156,6 +156,16 @@ public class PixivProxy implements PluginService {
         return null;
     }
 
+    @Override
+    public boolean init() {
+        return true;
+    }
+
+    @Override
+    public boolean reload() {
+        return true;
+    }
+
     private String[] parseParams(String message, OutMessage out) {
 
         // 去除特殊字符

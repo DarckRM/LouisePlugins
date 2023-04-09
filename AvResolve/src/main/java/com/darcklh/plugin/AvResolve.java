@@ -146,6 +146,16 @@ public class AvResolve implements PluginService {
         return null;
     }
 
+    @Override
+    public boolean init() {
+        return true;
+    }
+
+    @Override
+    public boolean reload() {
+        return true;
+    }
+
     private void sendResult(JSONObject result, OutMessage outMessage) {
         StringBuilder message = new StringBuilder();
         JSONObject data = result.getJSONObject("data");

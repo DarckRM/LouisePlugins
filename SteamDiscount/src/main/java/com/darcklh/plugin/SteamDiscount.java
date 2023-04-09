@@ -101,4 +101,14 @@ public class SteamDiscount implements PluginService {
     public JSONObject service() {
         return null;
     }
+
+    @Override
+    public boolean init() {
+        return true;
+    }
+
+    @Override
+    public boolean reload() {
+        return true;
+    }
 }

@@ -30,11 +30,12 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * @author DarckLH
  * @date 2022/10/20 15:37
- * @Description
+ * @Description TODO 实现请求队列的缓存持久化 网络请求使用 louise 提供的封装接口
  */
 public class AiPaint implements PluginService {
 
@@ -147,57 +148,75 @@ public class AiPaint implements PluginService {
                 return;
             }
 
-            // 进入监听模式
-            CqhttpWSController.startWatch(inMessage.getUser_id());
-
-            int interval = 0;
+//            // 进入监听模式
+//            CqhttpWSController.startWatch(inMessage.getUser_id());
+//
+//            int interval = 0;
 
             // 判断是否需要以图作图
             outMsg.setMessage("[CQ:at,qq=" + inMessage.getUser_id() + "]如果需要以图作图请回复 嗯");
             r.sendMessage(outMsg);
-
-            try {
-                while (interval < 5000) {
-                    // 尝试从监听队列获取消息体
-                    InMessage inMsg = CqhttpWSController.messageMap.get(inMessage.getUser_id());
-                    if (inMsg != null) {
-                        if (inMsg.getMessage().equals("嗯")) {
-                            outMsg.setMessage("[CQ:at,qq=" + inMessage.getUser_id() + "]请在 15秒 内发送一张图片");
-                            r.sendMessage(outMsg);
-                            interval = 0;
-                            // 清除原有的参数
-                            CqhttpWSController.messageMap.remove(inMessage.getUser_id());
-                            while (true) {
-                                if (interval == 15000) {
-                                    timer.set(-1);
-                                    outMsg.setMessage("[CQ:at,qq=" + inMessage.getUser_id() + "]你太久没有理露易丝，已经忘记画图了");
-                                    r.sendMessage(outMsg);
-                                    return;
-                                }
-                                // 尝试从监听队列获取消息体
-                                InMessage imgMsg = CqhttpWSController.messageMap.get(inMessage.getUser_id());
-                                if (imgMsg != null) {
-                                    inMessage.setMessage(inMessage.getMessage() + " " + imgMsg.getMessage());
-                                    break;
-                                }
-                                Thread.sleep(1000);
-                                interval += 1000;
-                            }
-                            break;
+            CqhttpWSController.getMessage((value) -> {
+                if (value == null)
+                    return;
+                if (value.getMessage().equals("嗯")) {
+                    outMsg.setMessage("请在 15 秒内发送图片");
+                    r.sendMessage(outMsg);
+                    CqhttpWSController.getMessage((value2) -> {
+                        if (value2 != null) {
+                            inMessage.setMessage(inMessage.getMessage() + " " + value2.getMessage());
+                        } else {
+                            outMsg.setMessage("[CQ:at,qq=" + inMessage.getUser_id() + "]你太久没有理露易丝，已经忘记画图了");
+                            throw new ReplyException(outMsg);
                         }
-                    }
-                    Thread.sleep(1000);
-                    interval += 1000;
+                    }, inMessage.getUser_id(), 15000L);
                 }
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            } finally {
-                // 监听计数器减少，移除多余消息
-                CqhttpWSController.stopWatch(inMessage.getUser_id());
-            }
+            }, inMessage.getUser_id(), 5000L);
+
+
+//            try {
+//                while (interval < 5000) {
+//                    // 尝试从监听队列获取消息体
+//                    InMessage inMsg = CqhttpWSController.messageMap.get(inMessage.getUser_id());
+//                    if (inMsg != null) {
+//                        if (inMsg.getMessage().equals("嗯")) {
+//                            outMsg.setMessage("[CQ:at,qq=" + inMessage.getUser_id() + "]请在 15秒 内发送一张图片");
+//                            r.sendMessage(outMsg);
+//                            interval = 0;
+//                            // 清除原有的参数
+//                            CqhttpWSController.messageMap.remove(inMessage.getUser_id());
+//                            while (true) {
+//                                if (interval == 15000) {
+//                                    timer.set(-1);
+//                                    outMsg.setMessage("[CQ:at,qq=" + inMessage.getUser_id() + "]你太久没有理露易丝，已经忘记画图了");
+//                                    r.sendMessage(outMsg);
+//                                    return;
+//                                }
+//                                // 尝试从监听队列获取消息体
+//                                InMessage imgMsg = CqhttpWSController.messageMap.get(inMessage.getUser_id());
+//                                if (imgMsg != null) {
+//                                    inMessage.setMessage(inMessage.getMessage() + " " + imgMsg.getMessage());
+//                                    break;
+//                                }
+//                                Thread.sleep(1000);
+//                                interval += 1000;
+//                            }
+//                            break;
+//                        }
+//                    }
+//                    Thread.sleep(1000);
+//                    interval += 1000;
+//                }
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            } finally {
+//                // 监听计数器减少，移除多余消息
+//                CqhttpWSController.stopWatch(inMessage.getUser_id());
+//            }
 
             // 校验参数
-            String[] params = parseParams(inMessage.getMessage() + "[CQ:image,file=d3cc538fffe266d06fa1f0005168f9ce.image,subType=0,url=https://gchat.qpic.cn/gchatpic_new/412543224/798823950-2595967398-D3CC538FFFE266D06FA1F0005168F9CE/0?term=2&amp;is_origin=0]", inMessage, r);
+            String[] params = parseParams(inMessage.getMessage(), inMessage, r);
+//            String[] params = parseParams(inMessage.getMessage() + "[CQ:image,file=2f817087c8114ec3aa261090dee54121.image,url=https://c2cpicdw.qpic.cn/offpic_new/412543224//412543224-446643685-2F817087C8114EC3AA261090DEE54121/0?term=2&amp;is_origin=0]", inMessage, r);
             if (params == null)
                 return;
 
@@ -208,14 +227,14 @@ public class AiPaint implements PluginService {
                 task.setWidth(Integer.parseInt(params[4]));
             }
             task.prompt = map.get("prompt") + params[0];
-            task.uc = (String) map.get("negative-prompt");
+            task.negativePrompt = (String) map.get("negative-prompt");
             task.inMessage = inMessage;
 
             log.info("AiPaint 任务参数: " + task.prompt);
 
             try {
                 // 队列最大允许 20 个任务排队
-                if (paintQueue.size() > 8) {
+                if (paintQueue.size() > 12) {
                     throw new ReplyException("AI 已经被塞满了");
                 } else {
                     paintQueue.put(task);
@@ -261,6 +280,16 @@ public class AiPaint implements PluginService {
     @Override
     public JSONObject service() {
         return null;
+    }
+
+    @Override
+    public boolean init() {
+        return true;
+    }
+
+    @Override
+    public boolean reload() {
+        return true;
     }
 
     private void adminCommand(String user_id, OutMessage outMsg, R r, String tag) {
@@ -414,20 +443,34 @@ public class AiPaint implements PluginService {
                 // 开始时间
                 long start_time = System.currentTimeMillis();
                 // 判断任务类型，根据不同类型构造不同 Body
-                ArrayList<Object> array;
                 JSONObject inBody = new JSONObject();
                 if (inTask.getImage() != null) {
                     inTask.setNoise((Double) map.get("noise"));
                     inTask.setStrength((Double) map.get("strength"));
-                    array = getStableDiffImageBody(inTask);
-                    inBody.put("fn_index", map.get("img_fn"));
+                    inBody.put("denoising_strength", inTask.getStrength());
+                    JSONArray initImages = new JSONArray();
+                    initImages.add(inTask.getImage());
+                    inBody.put("init_images", initImages);
+                    inBody.put("prompt", inTask.getPrompt());
+                    inBody.put("negative_prompt", inTask.negativePrompt);
+                    inBody.put("steps", inTask.getImg_to_steps());
+                    inBody.put("sampler_index", inTask.getSampler());
+                    inBody.put("width", inTask.getWidth());
+                    inBody.put("height", inTask.getHeight());
+                    inBody.put("cfg_scale", inTask.getScale());
+                    url += "/img2img";
                 }
                 else {
-                    array = getStableDiffTextBody(inTask);
-                    inBody.put("fn_index", map.get("text_fn"));
+                    inBody.put("denoising_strength", 0);
+                    inBody.put("prompt", inTask.getPrompt());
+                    inBody.put("negative_prompt", inTask.negativePrompt);
+                    inBody.put("steps", inTask.getSteps());
+                    inBody.put("sampler_index", inTask.getSampler());
+                    inBody.put("width", inTask.getWidth());
+                    inBody.put("height", inTask.getHeight());
+                    inBody.put("cfg_scale", inTask.getScale());
+                    url += "/txt2img";
                 }
-                inBody.put("data", array);
-                inBody.put("session_hash", map.get("session"));
                 // (inBody.toString());
                 RequestBody body = RequestBody.create(MEDIA_TYPE_JSON, inBody.toString());
                 Request request = builder.url(url).post(body).build();
@@ -440,8 +483,7 @@ public class AiPaint implements PluginService {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                JSONArray data = result.getJSONArray("data");
-                String imgData = map.get("app-file-api") + data.getJSONArray(0).getJSONObject(0).getString("name");
+                String base64Image = result.getJSONArray("images").getString(0);
 
                 //TODO ai图片下载到本地
                 long end_time = System.currentTimeMillis();
@@ -456,7 +498,7 @@ public class AiPaint implements PluginService {
                 else
                     bodyPart = textToImg(inTask);
                 String restPart = "\n耗时: " + cost_time + " 秒" +
-                        "\n[CQ:image,file=" + imgData + "]" +
+                        "\n[CQ:image,file=base64://" + base64Image + "]" +
                         "\n剩下还有 " + (paintQueue.size() - 1) + " 个任务";
                 String nodeMsg = headPart + bodyPart + restPart;
                 if (out.getGroup_id() == -1)
@@ -634,148 +676,14 @@ public class AiPaint implements PluginService {
     }
 
     private Integer[] adjustScale(int height, int width) {
-        // 三种类型
-        float offset = height - width;
-        Integer[] heightAndWidth = {768, 512};
+        Integer[] heightAndWidth = {960, 720};
         float scale = (float) height / width;
-        if (offset < 0) {
-            heightAndWidth[0] = 512;
-            heightAndWidth[1] = 768;
-        }
-        if (scale > 0.8 && scale < 1.2) {
-            heightAndWidth[0] = 512;
-            heightAndWidth[1] = 512;
-        }
+
+        heightAndWidth[1] = 720;
+        heightAndWidth[0] = (int) (720 * scale);
+
         return heightAndWidth;
     }
-
-    private ArrayList<Object> getStableDiffTextBody(PaintTask task) {
-        ArrayList<Object> array = new ArrayList<>();
-        array.add(task.prompt);
-        array.add(task.uc);
-        array.add("None");
-        array.add("None");
-        array.add(task.getSteps());
-        array.add("Euler a");
-        array.add(false);
-        array.add(false);
-        array.add(1);
-        array.add(1);
-        array.add(task.getScale());
-        array.add(-1);
-        array.add(-1);
-        array.add(0);
-        array.add(0);
-        array.add(0);
-        array.add(false);
-        array.add(task.getHeight());
-        array.add(task.getWidth());
-        array.add(false);
-        array.add(0.7);
-        array.add(task.getHeight());
-        array.add(task.getWidth());
-        array.add("None");
-        array.add(false);
-        array.add(false);
-        array.add(false);
-        // array.add(null);
-        array.add("");
-        array.add("Seed");
-        array.add("");
-        array.add("Nothing");
-        array.add("");
-        array.add(true);
-        array.add(false);
-        array.add(false);
-        array.add(null);
-        array.add("");
-        array.add("");
-        return array;
-    }
-
-    private ArrayList<Object> getStableDiffImageBody(PaintTask task) {
-        ArrayList<Object> array = new ArrayList<>();
-        array.add(0);
-        array.add(task.getPrompt());
-        array.add(task.getUc());
-        array.add("None");
-        array.add("None");
-        array.add("data:image/jpeg;base64," + task.getImage());
-        array.add(null);
-        array.add(null);
-        array.add(null);
-        array.add("Draw mask");
-        array.add(task.getImg_to_steps());
-        array.add("Euler a");
-        array.add(4);
-        array.add("original");
-        array.add(false);
-        array.add(false);
-        array.add(1);
-        array.add(1);
-        array.add(task.getScale());
-        array.add(task.getStrength());
-        array.add(-1);
-        array.add(-1);
-        array.add(0);
-        array.add(0);
-        array.add(0);
-        array.add(false);
-        array.add(task.getHeight());
-        array.add(task.getWidth());
-        array.add("Just resize");
-        array.add(false);
-        array.add(32);
-        array.add("Inpaint masked");
-        array.add("");
-        array.add("");
-        array.add("None");
-        array.add("");
-        array.add(true);
-        array.add(true);
-        array.add("");
-        array.add("");
-        array.add(true);
-        array.add(50);
-        array.add(true);
-        array.add(1);
-        array.add(0);
-        array.add(false);
-        array.add(4);
-        array.add(1);
-        array.add("");
-        array.add(128);
-        array.add(8);
-        String[] direction = {"left", "right", "up", "down"};
-        array.add(direction);
-        array.add(1);
-        array.add(0.05);
-        array.add(128);
-        array.add(4);
-        array.add("fill");
-        String[] another_direction = {"left", "right", "up", "down"};
-        array.add(another_direction);
-        array.add(false);
-        array.add(false);
-        array.add(false);
-        // array.add(null);
-        array.add("");
-        array.add("");
-        array.add(64);
-        array.add("None");
-        array.add("Seed");
-        array.add("");
-        array.add("Nothing");
-        array.add("");
-        array.add(true);
-        array.add(false);
-        array.add(false);
-        array.add(null);
-        array.add("");
-        array.add("");
-        return array;
-    }
-
     // 如果存在 NSFW 相关关键词则返回失败结果
     private boolean promptFilter(String prompt, InMessage inMsg) {
         String[] nsfw_words = map.get("nsfw").toString().split(",");

@@ -13,7 +13,7 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="fastjson-1.2.28" level="project" />
     <orderEntry type="library" name="slf4j-api-1.7.32" level="project" />
-    <orderEntry type="library" name="louise-0.1.6-dev" level="project" />
+    <orderEntry type="library" name="louise-0.1.7-dev" level="project" />
     <orderEntry type="library" name="Maven: com.squareup.okhttp3:okhttp:4.9.0" level="project" />
     <orderEntry type="library" name="Maven: com.squareup.okio:okio:2.8.0" level="project" />
     <orderEntry type="library" name="Maven: org.jetbrains.kotlin:kotlin-stdlib-common:1.4.0" level="project" />

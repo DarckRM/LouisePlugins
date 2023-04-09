@@ -5,7 +5,6 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.darcklh.louise.Config.LouiseConfig;
 import com.darcklh.louise.Model.InnerException;
-import com.darcklh.louise.Model.Louise.User;
 import com.darcklh.louise.Model.Messages.InMessage;
 import com.darcklh.louise.Model.Messages.Node;
 import com.darcklh.louise.Model.Messages.OutMessage;
@@ -13,8 +12,9 @@ import com.darcklh.louise.Model.R;
 import com.darcklh.louise.Model.Sender;
 import com.darcklh.louise.Service.PluginService;
 import com.darcklh.louise.Utils.UniqueGenerator;
+import com.plexpt.chatgpt.ChatGPT;
+import com.plexpt.chatgpt.util.Proxys;
 import okhttp3.*;
-import okhttp3.internal.http2.Header;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
@@ -23,11 +23,9 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -38,7 +36,9 @@ import java.util.concurrent.TimeUnit;
  * @date 2022/12/5 12:21
  * @Description
  */
-public class ChatGPT implements PluginService {
+public class ChatBot implements PluginService {
+
+    private Logger log = LoggerFactory.getLogger(ChatBot.class);
 
     private class ChatEntity {
         Long unix_time;
@@ -56,10 +56,16 @@ public class ChatGPT implements PluginService {
 
     private R r = new R();
 
-    private Logger log = LoggerFactory.getLogger(ChatGPT.class);
-
     public static void main(String[] args) {
-        ChatGPT ai = new ChatGPT();
+//        //国内需要代理
+////        Proxy proxy = Proxys.http("127.0.0.1", 7890);
+//        //socks5 代理
+//         Proxy proxy = Proxys.socks5("127.0.0.1", 7890);
+//
+//        ChatGPT chatGPT = new ChatGPT();
+//
+//        String res = chatGPT.chat("写一段七言绝句诗，题目是：火锅！");
+        ChatBot ai = new ChatBot();
         LouiseConfig.BOT_ACCOUNT = "1655944518";
         LouiseConfig.LOUISE_ADMIN_NUMBER = "412543224";
         LouiseConfig.BOT_BASE_URL = "http://127.0.0.1:5700/";
@@ -192,6 +198,16 @@ public class ChatGPT implements PluginService {
         return null;
     }
 
+    @Override
+    public boolean init() {
+        return true;
+    }
+
+    @Override
+    public boolean reload() {
+        return true;
+    }
+
     /**
      * 初始化配置文件
      */
@@ -203,7 +219,7 @@ public class ChatGPT implements PluginService {
             inputStream = new FileInputStream("./config/chatgpt-config.yml");
         } catch (FileNotFoundException e) {
             e.printStackTrace();
-            throw new InnerException("PLG-ChatGPT", "读取配置文件失败", e.getLocalizedMessage());
+            throw new InnerException("PLG-ChatBot", "读取配置文件失败", e.getLocalizedMessage());
         }
 
         Map<String, Object> map = yaml.load(inputStream);
