@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class  BiliStreamAssistant implements PluginService {
 
-    public Logger log = LoggerFactory.getLogger(BiliStreamAssistant.class);
+    Logger log = LoggerFactory.getLogger(BiliStreamAssistant.class);
     private static OkHttpClient HTTP_CLIENT = new OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(300, TimeUnit.SECONDS)

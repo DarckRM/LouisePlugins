@@ -7,6 +7,7 @@ import com.darcklh.louise.Config.LouiseConfig;
 import com.darcklh.louise.Controller.CqhttpWSController;
 import com.darcklh.louise.Model.InnerException;
 import com.darcklh.louise.Model.Messages.InMessage;
+import com.darcklh.louise.Model.Messages.Message;
 import com.darcklh.louise.Model.Messages.Node;
 import com.darcklh.louise.Model.Messages.OutMessage;
 import com.darcklh.louise.Model.R;
@@ -75,10 +76,10 @@ public class AiPaint implements PluginService {
     private static boolean is_thread_on = false;
 
     private static Map<String, Object> map;
-    private static Map<String, BanUser> bannerMap = new HashMap<>();
-
+    private static Map<Long, BanUser> bannerMap = new HashMap<>();
     public static void main(String[] args) {
         AiPaint ai = new AiPaint();
+        ai.init();
         LouiseConfig.BOT_ACCOUNT = "1655944518";
         LouiseConfig.LOUISE_ADMIN_NUMBER = "412543224";
         LouiseConfig.BOT_BASE_URL = "http://127.0.0.1:5700/";
@@ -87,9 +88,9 @@ public class AiPaint implements PluginService {
         sender.setNickname("DarckLh");
         sender.setUser_id((long) 412543224);
         in.setUser_id((long) 412543224);
-        in.setGroup_id((long) -1);
+        in.setGroup_id((long) 477960516);
         in.setSender(sender);
-        in.setMessage_type("private");
+        in.setMessage_type("group");
         in.setMessage("!aipaint 1girl,cute,skirt");
         //in.setMessage("!aipaint blonde hair, loli");
         ai.service(in);
@@ -112,6 +113,7 @@ public class AiPaint implements PluginService {
             // 声明一个新任务
             PaintTask task = new PaintTask();
             OutMessage outMsg = new OutMessage(inMessage);
+            Message message = Message.build(inMessage);
 
             String[] arr = inMessage.getMessage().split(" ");
             String tag;
@@ -121,21 +123,27 @@ public class AiPaint implements PluginService {
                 tag = arr[1];
             task.outMessage = outMsg;
 
-            // 初始化配置文件
-            initConfig(task);
+            // 初始各种参数
+            task.width = (Integer) map.get("width");
+            task.height = (Integer) map.get("height");
+            task.scale = (Integer) map.get("scale");
+            task.sampler = (String) map.get("sampler");
+            task.steps = (Integer) map.get("steps");
+            task.setImg_to_steps((Integer) map.get("img_to_steps"));
+            task.n_samples = (Integer) map.get("n_samples");
+            task.ucPreset = (Integer) map.get("ucPreset");
+            task.seed = new Random().nextInt(9999);
 
             if (tag.equals("$help")) {
                 String[] nsfw = map.get("nsfw").toString().split(",");
                 StringBuilder builder = new StringBuilder();
-                outMsg.setMessage("违禁词列表会动态更新，不确定的情况下先看一眼再用吧\n");
-                r.sendMessage(outMsg);
+                message.text("违禁词列表会动态更新，不确定的情况下先看一眼再用吧\n").send();
                 int line = 0;
                 for (String word: nsfw) {
                     builder.append(word).append(" ,");
                     if (line == 10) {
                         line = 0;
-                        outMsg.setMessage(builder.toString());
-                        r.sendMessage(outMsg);
+                        message.text(builder.toString()).send();
                         builder.delete(0, builder.length());
                     } else
                         line++;
@@ -144,79 +152,24 @@ public class AiPaint implements PluginService {
             }
 
             if (tag.contains("$")) {
-                adminCommand(inMessage.getUser_id().toString(), outMsg, r, tag);
+                adminCommand(inMessage.getUser_id(), message, r, tag);
                 return;
             }
 
-//            // 进入监听模式
-//            CqhttpWSController.startWatch(inMessage.getUser_id());
-//
-//            int interval = 0;
-
             // 判断是否需要以图作图
-            outMsg.setMessage("[CQ:at,qq=" + inMessage.getUser_id() + "]如果需要以图作图请回复 嗯");
-            r.sendMessage(outMsg);
+            String[] imageUrl = {""};
+            message.at().text("如果需要以图作图请在 7秒 内发送一张图片").send();
             CqhttpWSController.getMessage((value) -> {
-                if (value == null)
-                    return;
-                if (value.getMessage().equals("嗯")) {
-                    outMsg.setMessage("请在 15 秒内发送图片");
-                    r.sendMessage(outMsg);
-                    CqhttpWSController.getMessage((value2) -> {
-                        if (value2 != null) {
-                            inMessage.setMessage(inMessage.getMessage() + " " + value2.getMessage());
-                        } else {
-                            outMsg.setMessage("[CQ:at,qq=" + inMessage.getUser_id() + "]你太久没有理露易丝，已经忘记画图了");
-                            throw new ReplyException(outMsg);
-                        }
-                    }, inMessage.getUser_id(), 15000L);
-                }
-            }, inMessage.getUser_id(), 5000L);
-
-
-//            try {
-//                while (interval < 5000) {
-//                    // 尝试从监听队列获取消息体
-//                    InMessage inMsg = CqhttpWSController.messageMap.get(inMessage.getUser_id());
-//                    if (inMsg != null) {
-//                        if (inMsg.getMessage().equals("嗯")) {
-//                            outMsg.setMessage("[CQ:at,qq=" + inMessage.getUser_id() + "]请在 15秒 内发送一张图片");
-//                            r.sendMessage(outMsg);
-//                            interval = 0;
-//                            // 清除原有的参数
-//                            CqhttpWSController.messageMap.remove(inMessage.getUser_id());
-//                            while (true) {
-//                                if (interval == 15000) {
-//                                    timer.set(-1);
-//                                    outMsg.setMessage("[CQ:at,qq=" + inMessage.getUser_id() + "]你太久没有理露易丝，已经忘记画图了");
-//                                    r.sendMessage(outMsg);
-//                                    return;
-//                                }
-//                                // 尝试从监听队列获取消息体
-//                                InMessage imgMsg = CqhttpWSController.messageMap.get(inMessage.getUser_id());
-//                                if (imgMsg != null) {
-//                                    inMessage.setMessage(inMessage.getMessage() + " " + imgMsg.getMessage());
-//                                    break;
-//                                }
-//                                Thread.sleep(1000);
-//                                interval += 1000;
-//                            }
-//                            break;
-//                        }
-//                    }
-//                    Thread.sleep(1000);
-//                    interval += 1000;
-//                }
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//            } finally {
-//                // 监听计数器减少，移除多余消息
-//                CqhttpWSController.stopWatch(inMessage.getUser_id());
-//            }
+                if (value != null)
+                    imageUrl[0] = value.getMessage();
+                else
+                    imageUrl[0] = "";
+            }, message.getUser_id(), 7000L);
 
             // 校验参数
-            String[] params = parseParams(inMessage.getMessage(), inMessage, r);
-//            String[] params = parseParams(inMessage.getMessage() + "[CQ:image,file=2f817087c8114ec3aa261090dee54121.image,url=https://c2cpicdw.qpic.cn/offpic_new/412543224//412543224-446643685-2F817087C8114EC3AA261090DEE54121/0?term=2&amp;is_origin=0]", inMessage, r);
+            String[] params = parseParams(inMessage.getMessage(), message, imageUrl[0]);
+//            String[] params = parseParams(inMessage.getMessage(), message, "[CQ:image,file=2f817087c8114ec3aa261090dee54121.image,url=https://c2cpicdw.qpic.cn/offpic_new/412543224//412543224-446643685-2F817087C8114EC3AA261090DEE54121/0?term=2&amp;is_origin=0]");
+//          String[] params = parseParams(inMessage.getMessage() + "[CQ:image,file=2f817087c8114ec3aa261090dee54121.image,url=https://c2cpicdw.qpic.cn/offpic_new/412543224//412543224-446643685-2F817087C8114EC3AA261090DEE54121/0?term=2&amp;is_origin=0]", inMessage, r);
             if (params == null)
                 return;
 
@@ -237,10 +190,10 @@ public class AiPaint implements PluginService {
                 if (paintQueue.size() > 12) {
                     throw new ReplyException("AI 已经被塞满了");
                 } else {
+                    task.setInMessage(inMessage);
                     paintQueue.put(task);
-                    outMsg.setMessage("[CQ:at,qq=" + inMessage.getUser_id() + "]绘画请求已加入队列，当前队列长度: " + paintQueue.size());
                     taskReady.set(true);
-                    r.sendMessage(outMsg);
+                    message.at().text("绘画请求已加入队列，当前队列长度: " + + paintQueue.size()).send();
                 }
             } catch (InterruptedException e) {
                 throw new ReplyException("添加作画任务失败了");
@@ -254,9 +207,7 @@ public class AiPaint implements PluginService {
                 return null;
             }
             if (timer.get() == 25) {
-                OutMessage outMsg = new OutMessage(inMessage);
-                outMsg.setMessage("[CQ:at,qq=" + inMessage.getUser_id() + "]添加画图任务超时，请检查参数或询问管理员");
-                r.sendMessage(outMsg);
+                Message.build(inMessage).reply().text("添加画图任务超时，请检查参数或询问管理员").send();
                 return null;
             }
             timer.getAndIncrement();
@@ -284,6 +235,20 @@ public class AiPaint implements PluginService {
 
     @Override
     public boolean init() {
+        // 加载配置文件
+        Yaml yaml = new Yaml();
+        InputStream inputStream;
+        try {
+            inputStream = new FileInputStream("./config/aipaint-config.yml");
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            throw new InnerException(500, "读取配置文件失败", e.getLocalizedMessage());
+        }
+        map = yaml.load(inputStream);
+
+        url = (String) map.get("app-api");
+        cookie = (String) map.get("cookie");
+        user_agent = (String) map.get("user-agent");
         return true;
     }
 
@@ -292,11 +257,10 @@ public class AiPaint implements PluginService {
         return true;
     }
 
-    private void adminCommand(String user_id, OutMessage outMsg, R r, String tag) {
+    private void adminCommand(Long user_id, Message message, R r, String tag) {
         // 如果不是管理员则不允许使用以下命令
-        if (!user_id.equals(LouiseConfig.LOUISE_ADMIN_NUMBER)) {
-            outMsg.setMessage("非法的参数请求");
-            r.sendMessage(outMsg);
+        if (!user_id.toString().equals(LouiseConfig.LOUISE_ADMIN_NUMBER)) {
+            message.reply().text("非法的参数请求").send();
             return;
         }
 
@@ -304,38 +268,33 @@ public class AiPaint implements PluginService {
         if (tag.equals("$go")) {
             // startNaifu(cookie, user_agent, url, r);
             if (paintQueue.size() == 0) {
-                outMsg.setMessage("当前没有需要开启的任务");
-                r.sendMessage(outMsg);
+                message.text("当前没有需要开启的任务").send();
                 return;
             }
-            outMsg.setMessage("当前队列中有 " + paintQueue.size() + " 任务待开启");
-            r.sendMessage(outMsg);
+            message.text("当前队列中有 " + paintQueue.size() + " 任务待开启").send();
             startStable(r);
             return;
         }
         // 预留指令 输出所有封禁用户
         if (tag.equals("$banList")) {
             if (map.size() == 0) {
-                outMsg.setMessage("当前没有被封禁的用户");
-                r.sendMessage(outMsg);
+                message.text("当前没有被封禁的用户").send();
                 return;
             }
             int number = 0;
             StringBuilder builder = new StringBuilder();
             builder.append("⚠ 封禁用户列表 ⚠\n");
-            for (Map.Entry<String, BanUser> user: bannerMap.entrySet()) {
+            for (Map.Entry<Long, BanUser> user: bannerMap.entrySet()) {
                 long restTime = user.getValue().getRelease_date() - System.currentTimeMillis();
                 builder.append(number).append(" - 还剩 ").append(user.getKey()).append(restTime / 1000).append(" 秒解封\n");
             }
-            outMsg.setMessage(builder.toString());
-            r.sendMessage(outMsg);
+            message.text(builder.toString()).send();
             return;
         }
         // 预留指令 输出当前任务队列信息
         if (tag.equals("$taskList")) {
             if (paintQueue.size() == 0) {
-                outMsg.setMessage("当前队列没有任何任务");
-                r.sendMessage(outMsg);
+                message.text("当前队列没有任何任务").send();
                 return;
             }
             int number = 0;
@@ -343,89 +302,8 @@ public class AiPaint implements PluginService {
             for (PaintTask task: paintQueue) {
                 builder.append(number).append(" - 用户 ").append(task.getInMessage().getUser_id()).append(" 的任务\n");
             }
-            outMsg.setMessage(builder.toString());
-            r.sendMessage(outMsg);
+            message.text(builder.toString()).send();
         }
-    }
-
-    private void startNaifu(String cookie, String user_agent, String url, R r) {
-        new Thread(() -> {
-            Request.Builder builder = new Request.Builder()
-                    .addHeader("Cookie", cookie)
-                    .addHeader("User-Agent", user_agent);
-
-            while (paintQueue.size() > 0) {
-                log.info("AiPaint 任务队列长度: " + paintQueue.size());
-                PaintTask inTask = paintQueue.peek();
-                inTask.outMessage.setMessage("开始作画任务，当前任务队列长度: " + paintQueue.size());
-                // 开始时间
-                long start_time = System.currentTimeMillis();
-                r.sendMessage(inTask.outMessage);
-                if (inTask.image != null) {
-                    inTask.setNoise((Double) map.get("noise"));
-                    inTask.setStrength((Double) map.get("strength"));
-                    inTask.setSteps(50);
-                }
-//                log.info(inTask.toString());
-                RequestBody body = RequestBody.create(MEDIA_TYPE_JSON, inTask.toString());
-                Request request = builder.url(url).post(body).build();
-                try {
-                    log.info("AiPaint 尝试请求 API: " + url);
-                    Response response = HTTP_CLIENT.newCall(request).execute();
-                    // 判断状态码，如果获取不到图片重试三次
-                    boolean result = false;
-                    if (response.code() != 200) {
-                        OutMessage out = new OutMessage(inTask.inMessage);
-                        if (response.code() == 204) {
-                            out.setMessage("AI 维护中");
-                            r.sendMessage(out);
-                            throw new ReplyException("AI 维护中");
-                        }
-                        if (response.code() == 404) {
-                            out.setMessage("AI 现在不可用，当 AI 恢复可用时会按顺序处理任务");
-                            r.sendMessage(out);
-                            return;
-                        }
-                        if (response.code() != 200) {
-                            out.setMessage("画图 API 异常，请检查 cookie 是否正确");
-                            r.sendMessage(out);
-                            throw new ReplyException("画图 API 异常，请检查 cookie 是否正确");
-                        }
-                    } else
-                        result = true;
-                    if (!result) {
-                        throw new ReplyException("AI 忙不过来了，先让它歇一会儿吧~ (30s 后尝试)");
-                    }
-
-                    String imgData = response.body().string().split("\\r?\\n")[2].substring(5);
-
-                    //TODO ai图片下载到本地
-                    long end_time = System.currentTimeMillis();
-                    long cost_time = (end_time - start_time) / 1000;
-                    paintQueue.remove();
-                    OutMessage out = new OutMessage(inTask.inMessage);
-
-                    // 封装返回消息 需要分别处理 imgToImg 和 textToImg
-                    String headPart = "[CQ:at,qq=" + out.getUser_id() + "]这是你召唤的图片哦";
-                    String bodyPart;
-                    if (inTask.image != null)
-                        bodyPart = imgToImg(inTask);
-                    else
-                        bodyPart = textToImg(inTask);
-                    String restPart = "\n耗时: " + cost_time + " 秒" +
-                            "\n[CQ:image,file=base64://" + imgData +
-                            "]\n剩下还有 " + paintQueue.size() + " 个任务";
-                    out.setMessage(headPart + bodyPart + restPart);
-                    r.sendMessage(out);
-                } catch (Exception e) {
-                    paintQueue.remove();
-                    if (e instanceof ReplyException) {
-                        throw (ReplyException) e;
-                    }
-                    throw new InnerException("PLG-AiPaint", "遇到内部错误", e.getMessage());
-                }
-            }
-        }, UniqueGenerator.uniqueThreadName("AIN", "Naifu")).start();
     }
 
     private void startStable(R r) {
@@ -437,13 +315,14 @@ public class AiPaint implements PluginService {
                 log.info("AiPaint 任务队列长度: " + paintQueue.size());
                 // 从队列中取出一个任务
                 PaintTask inTask = paintQueue.peek();
-                log.info("开始用户 " + inTask.getInMessage().getUser_id() + " 的作画任务");
+                log.info("开始用户  的作画任务");
                 // inTask.outMessage.setMessage("开始作画任务，当前任务队列长度: " + paintQueue.size());
                 // r.sendMessage(inTask.outMessage);
                 // 开始时间
                 long start_time = System.currentTimeMillis();
                 // 判断任务类型，根据不同类型构造不同 Body
                 JSONObject inBody = new JSONObject();
+                String tempUrl = "";
                 if (inTask.getImage() != null) {
                     inTask.setNoise((Double) map.get("noise"));
                     inTask.setStrength((Double) map.get("strength"));
@@ -458,7 +337,7 @@ public class AiPaint implements PluginService {
                     inBody.put("width", inTask.getWidth());
                     inBody.put("height", inTask.getHeight());
                     inBody.put("cfg_scale", inTask.getScale());
-                    url += "/img2img";
+                    tempUrl = url + "/img2img";
                 }
                 else {
                     inBody.put("denoising_strength", 0);
@@ -469,11 +348,11 @@ public class AiPaint implements PluginService {
                     inBody.put("width", inTask.getWidth());
                     inBody.put("height", inTask.getHeight());
                     inBody.put("cfg_scale", inTask.getScale());
-                    url += "/txt2img";
+                    tempUrl = url + "/txt2img";
                 }
                 // (inBody.toString());
                 RequestBody body = RequestBody.create(MEDIA_TYPE_JSON, inBody.toString());
-                Request request = builder.url(url).post(body).build();
+                Request request = builder.url(tempUrl).post(body).build();
                 // 请求 AI
                 Response response = requestAIApi(request, r, inTask);
 
@@ -488,27 +367,18 @@ public class AiPaint implements PluginService {
                 //TODO ai图片下载到本地
                 long end_time = System.currentTimeMillis();
                 long cost_time = (end_time - start_time) / 1000;
-                OutMessage out = new OutMessage(inTask.inMessage);
-
+                Message message = Message.build(inTask.inMessage);
                 // 封装返回消息 需要分别处理 imgToImg 和 textToImg
-                String headPart = out.getSender().getNickname() + "，这是你召唤的图片哦";
-                String bodyPart;
+//                if (inTask.image != null)
+//                    imgToImg(inTask, node);
+//                else
+//                    textToImg(inTask, node);
+                message.node(Node.build().text(message.getSender().getNickname() + ", 这是你召唤的图片哦\n耗时: " + cost_time + " 秒\n"))
+                        .node(Node.build().image("base64://" + base64Image))
+                        .node(Node.build().text("\n剩下还有 " + (paintQueue.size() - 1) + " 个任务"));
                 if (inTask.image != null)
-                    bodyPart = imgToImg(inTask);
-                else
-                    bodyPart = textToImg(inTask);
-                String restPart = "\n耗时: " + cost_time + " 秒" +
-                        "\n[CQ:image,file=base64://" + base64Image + "]" +
-                        "\n剩下还有 " + (paintQueue.size() - 1) + " 个任务";
-                String nodeMsg = headPart + bodyPart + restPart;
-                if (out.getGroup_id() == -1)
-                    out.setMessage(nodeMsg);
-                else {
-                    ArrayList<Node> nodeList = new ArrayList<>();
-                    nodeList.add(new Node(nodeMsg, Long.parseLong(LouiseConfig.BOT_ACCOUNT)));
-                    out.setMessages(nodeList);
-                }
-                r.sendMessage(out);
+                    message.node(Node.build().image(inTask.original_image), 1);
+                message.reply().send();
                 // 执行完任务移除一个任务
                 paintQueue.remove();
 
@@ -563,12 +433,12 @@ public class AiPaint implements PluginService {
                 throw (ReplyException) e;
             }
             is_thread_on = false;
-            throw new InnerException("PLG-AiPaint", "遇到内部错误", e.getMessage());
+            throw new InnerException(500, "遇到内部错误", e.getMessage());
         }
         return response;
     }
 
-    private String[] parseParams(String message, InMessage inMsg, R r) {
+    private String[] parseParams(String message, Message inMsg, String imageUrl) {
         // 删除所有换行符
         message = message.replaceAll("\n", "").replaceAll("\r", "");
         // 群聊过滤 NSFW 关键词
@@ -581,21 +451,18 @@ public class AiPaint implements PluginService {
 
         String[] params = message.split("!aipaint ");
         if (params.length < 2) {
-            OutMessage outMsg = new OutMessage(inMsg);
-            outMsg.setMessage("AI 画图需要指定参数哦，请在命令空格后加上参数或在最后贴上图片");
-            r.sendMessage(outMsg);
+            inMsg.reply().text("AI 画图需要指定参数哦，请在命令空格后加上参数或在最后贴上图片").send();
             return null;
         }
         String param = params[1];
         // 存在图片则开启 img-img 模式
-        if (param.contains("[CQ:image")) {
-            String img_url = param.substring(param.indexOf("url=") + 4, param.length() - 1);
+        if (!imageUrl.equals("")) {
+            String img_url = imageUrl.substring(imageUrl.indexOf("url=") + 4, imageUrl.length() - 1);
             String original_img = img_url;
             // 图片转为 Base64 编码
-            InputStream in = null;
+            InputStream in;
             ByteArrayOutputStream stream = new ByteArrayOutputStream();
             Integer[] hAw = {512, 768};
-            // byte[] data = null;
             try {
                 // 创建URL
                 URL url = new URL(img_url);
@@ -619,7 +486,7 @@ public class AiPaint implements PluginService {
 
             // 取出剩下的 prompt 参数
             String[] args = new String[5];
-            args[0] = param.substring(0, param.indexOf("[CQ"));
+            args[0] = param;
             args[1] = img_url;
             args[2] = original_img;
             args[3] = hAw[0].toString();
@@ -632,47 +499,18 @@ public class AiPaint implements PluginService {
         }
     }
 
-    private void initConfig(PaintTask task) {
-        // 加载配置文件
-        Yaml yaml = new Yaml();
-        InputStream inputStream;
-        try {
-            inputStream = new FileInputStream("aipaint-config.yml");
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            throw new InnerException("PLG-AiPaint", "读取配置文件失败", e.getLocalizedMessage());
-        }
-        map = yaml.load(inputStream);
-
-        url = (String) map.get("app-api");
-        cookie = (String) map.get("cookie");
-        user_agent = (String) map.get("user-agent");
-
-        // 初始各种参数
-        task.width = (Integer) map.get("width");
-        task.height = (Integer) map.get("height");
-        task.scale = (Integer) map.get("scale");
-        task.sampler = (String) map.get("sampler");
-        task.steps = (Integer) map.get("steps");
-        task.setImg_to_steps((Integer) map.get("img_to_steps"));
-        task.n_samples = (Integer) map.get("n_samples");
-        task.ucPreset = (Integer) map.get("ucPreset");
-        task.seed = new Random().nextInt(9999);
-    }
-
-    private String textToImg(PaintTask inTask) {
-        return "\n采样次数: " + inTask.getSteps() +
+    private Node textToImg(PaintTask inTask, Node node) {
+        return node.text("\n采样次数: " + inTask.getSteps() +
                 "\n参数: " + inTask.getPrompt() +
-                "\n种子: " + inTask.getSeed();
+                "\n种子: " + inTask.getSeed());
     }
 
-    private String imgToImg(PaintTask inTask) {
-        return "\n采样次数: " + inTask.getSteps() +
+    private Node imgToImg(PaintTask inTask, Node node) {
+        return node.text("\n采样次数: " + inTask.getSteps() +
                 "\n参数: " + inTask.getPrompt() +
                 "\n扰动: " + inTask.getNoise() +
                 "\n强度: " + inTask.getStrength() +
-                "\n种子: " + inTask.getSeed() +
-                "\n[CQ:image,file="  + inTask.original_image + "]";
+                "\n种子: " + inTask.getSeed() + "\n");
     }
 
     private Integer[] adjustScale(int height, int width) {
@@ -685,11 +523,9 @@ public class AiPaint implements PluginService {
         return heightAndWidth;
     }
     // 如果存在 NSFW 相关关键词则返回失败结果
-    private boolean promptFilter(String prompt, InMessage inMsg) {
+    private boolean promptFilter(String prompt, Message message) {
         String[] nsfw_words = map.get("nsfw").toString().split(",");
-        String user_id = inMsg.getUser_id().toString();
-        R r = new R();
-        OutMessage outMsg = new OutMessage(inMsg);
+        Long user_id = message.getUser_id();
         // 尝试从 BanList 中获取用户
         BanUser user = bannerMap.get(user_id);
         if (user == null) {
@@ -699,19 +535,18 @@ public class AiPaint implements PluginService {
         } else {
             // 如果成功从列表中获取用户 先判断是否可以解封 通过则进入一般过审流程
             if (user.getBaned_times() > 10) {
-                outMsg.setMessage("[CQ:at,qq=" + user.getUser_id() + "]你已经违规请求过多次数");
+                message.at().text("你已经违规请求过多次数").send();
                 return false;
             }
 
             long offsetTime = user.getRelease_date() - System.currentTimeMillis();
             if ( offsetTime > 0) {
-                outMsg.setMessage("还有 " + offsetTime / 1000 + " 秒才能使用 AI 画图功能");
-                r.sendMessage(outMsg);
+                message.at().text("还有 " + offsetTime / 1000 + " 秒才能使用 AI 画图功能").send();
                 return false;
             }
         }
 
-        for (String words: nsfw_words) {
+        for (String words : nsfw_words) {
             if (prompt.contains(words)) {
 
                 // 用户触发了保护机制 加入 bannerList
@@ -723,12 +558,12 @@ public class AiPaint implements PluginService {
                 time += multiple * 30000;
                 user.setRelease_date(time);
 
-                outMsg.setMessage(words + " 违禁,AI 功能将暂时对你禁用\r\n" +
+                message.at().text(words + " 违禁,AI 功能将暂时对你禁用\r\n" +
                 "禁用次数:" + user.getBaned_times() + "\r\n" +
                 "恢复时间: " + (time - System.currentTimeMillis()) / 1000 + " 秒后\r\n" +
-                "主账号已经被封禁,保护机制是为了有效延续 bot 的生命,输入!aipaint $help以获取违禁词列表");
+                "主账号已经被封禁,保护机制是为了有效延续 bot 的生命,输入!aipaint $help以获取违禁词列表")
+                .send();
                 bannerMap.put(user.getUser_id(), user);
-                r.sendMessage(outMsg);
                 return false;
             }
         }
