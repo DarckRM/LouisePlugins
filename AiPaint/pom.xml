@@ -27,7 +27,11 @@
             <artifactId>slf4j-log4j12</artifactId>
             <version>2.0.3</version>
             <type>pom</type>
-            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>fastjson</artifactId>
+            <version>1.2.28</version>
         </dependency>
     </dependencies>
     <build>
