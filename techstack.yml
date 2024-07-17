@@ -1,0 +1,163 @@
+repo_name: DarckRM/LouisePlugins
+report_id: 265dd73a2e2c2d0809ce1ce0d2ec7bb8
+version: 0.1
+repo_type: Public
+timestamp: '2024-07-17T08:11:23+00:00'
+requested_by: DarckRM
+provider: github
+branch: master
+detected_tools_count: 10
+tools:
+- name: Java
+  description: A concurrent, class-based, object-oriented, language specifically designed
+    to have as few implementation dependencies as possible
+  website_url: https://www.java.com
+  open_source: true
+  hosted_saas: false
+  category: Languages & Frameworks
+  sub_category: Languages
+  image_url: https://img.stackshare.io/service/995/K85ZWV2F.png
+  detection_source_url: https://github.com/DarckRM/LouisePlugins
+  detection_source: Repo Metadata
+- name: Git
+  description: Fast, scalable, distributed revision control system
+  website_url: http://git-scm.com/
+  open_source: true
+  hosted_saas: false
+  category: Build, Test, Deploy
+  sub_category: Version Control System
+  image_url: https://img.stackshare.io/service/1046/git.png
+  detection_source_url: https://github.com/DarckRM/LouisePlugins
+  detection_source: Repo Metadata
+- name: Log4j
+  description: A Java-based logging utility
+  website_url: https://logging.apache.org/log4j/2.x/
+  version: 2.0.3
+  license: Apache-2.0
+  open_source: true
+  hosted_saas: false
+  category: Monitoring
+  sub_category: Logging Tools
+  image_url: https://img.stackshare.io/service/2804/Coralogix-log4j-integration.jpg
+  detection_source_url: https://github.com/DarckRM/LouisePlugins/blob/master/AiPaint/pom.xml
+  detection_source: AiPaint/pom.xml
+  last_updated_by: DarckRM
+  last_updated_on: 2022-10-25 15:33:56.000000000 Z
+- name: SLF4J
+  description: Simple logging facade for Java
+  website_url: http://slf4j.org/
+  open_source: false
+  hosted_saas: false
+  category: Monitoring
+  sub_category: Log Management
+  image_url: https://img.stackshare.io/service/2805/05518ecaa42841e834421e9d6987b04f_400x400.png
+  detection_source_url: https://github.com/DarckRM/LouisePlugins/blob/master/AiPaint/pom.xml
+  detection_source: AiPaint/pom.xml
+  last_updated_by: DarckRM
+  last_updated_on: 2022-10-25 15:33:56.000000000 Z
+- name: com.alibaba:fastjson
+  description: Fastjson is a JSON processor
+  version: 1.2.28
+  license: Apache-2.0
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: Maven Packages
+  image_url: https://img.stackshare.io/package/maven/image.png
+  detection_source_url: https://github.com/DarckRM/LouisePlugins/blob/master/AiPaint/pom.xml
+  detection_source: AiPaint/pom.xml
+  last_updated_by: DarckRM
+  last_updated_on: 2023-04-21 20:42:22.000000000 Z
+  vulnerabilities:
+  - name: Unsafe deserialization in com.alibaba:fastjson
+    cve_id: CVE-2022-25845
+    cve_url: https://github.com/advisories/GHSA-pv7h-hx5h-mgfj
+    detected_date: Jun 17
+    severity: high
+    first_patched: 1.2.83
+- name: org.jsoup:jsoup
+  description: Jsoup is a Java library for working with real-world HTML
+  version: 1.11.2
+  license: MIT
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: Maven Packages
+  image_url: https://img.stackshare.io/package/maven/image.png
+  detection_source_url: https://github.com/DarckRM/LouisePlugins/blob/master/SteamDiscount/pom.xml
+  detection_source: SteamDiscount/pom.xml
+  last_updated_by: DarckRM
+  last_updated_on: 2022-10-25 15:33:56.000000000 Z
+  vulnerabilities:
+  - name: Uncaught Exception in jsoup
+    cve_id: CVE-2021-37714
+    cve_url: https://github.com/advisories/GHSA-m72m-mhq2-9p6c
+    detected_date: Aug 24
+    severity: high
+    first_patched: 1.14.2
+  - name: jsoup may not sanitize code injection XSS attempts if SafeList.preserveRelativeLinks
+      is enabled
+    cve_id: CVE-2022-36033
+    cve_url: https://github.com/advisories/GHSA-gp7f-rwcx-9369
+    detected_date: Sep 2
+    severity: moderate
+    first_patched: 1.15.3
+- name: org.yaml:snakeyaml
+  description: YAML 1.1 parser and emitter for Java
+  version: '1.33'
+  license: Apache-2.0
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: Maven Packages
+  image_url: https://img.stackshare.io/package/maven/image.png
+  detection_source_url: https://github.com/DarckRM/LouisePlugins/blob/master/AiPaint/pom.xml
+  detection_source: AiPaint/pom.xml
+  last_updated_by: DarckRM
+  last_updated_on: 2023-04-09 21:50:38.000000000 Z
+  vulnerabilities:
+  - name: SnakeYaml Constructor Deserialization Remote Code Execution
+    cve_id: CVE-2022-1471
+    cve_url: https://github.com/advisories/GHSA-mjmj-j48q-9wg2
+    detected_date: Dec 13
+    severity: high
+    first_patched: '2.0'
+- name: com.squareup.okhttp3:okhttp
+  description: 'Null'
+  version: 4.9.0
+  license: Apache-2.0
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: Maven Packages
+  image_url: https://img.stackshare.io/package/maven/image.png
+  detection_source_url: https://github.com/DarckRM/LouisePlugins/blob/master/AiPaint/pom.xml
+  detection_source: AiPaint/pom.xml
+  last_updated_by: DarckRM
+  last_updated_on: 2023-04-21 20:42:22.000000000 Z
+- name: org.slf4j:slf4j-api
+  description: The slf4j API
+  version: 2.0.3
+  license: MIT
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: Maven Packages
+  image_url: https://img.stackshare.io/package/maven/image.png
+  detection_source_url: https://github.com/DarckRM/LouisePlugins/blob/master/AvResolve/pom.xml
+  detection_source: AvResolve/pom.xml
+  last_updated_by: DarckRM
+  last_updated_on: 2023-03-16 03:01:42.000000000 Z
+- name: org.slf4j:slf4j-log4j12
+  description: SLF4J LOG4J-12 Binding
+  version: 2.0.3
+  license: MIT
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: Maven Packages
+  image_url: https://img.stackshare.io/package/maven/image.png
+  detection_source_url: https://github.com/DarckRM/LouisePlugins/blob/master/AiPaint/pom.xml
+  detection_source: AiPaint/pom.xml
+  last_updated_by: DarckRM
+  last_updated_on: 2023-04-09 21:50:38.000000000 Z
